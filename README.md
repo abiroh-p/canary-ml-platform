@@ -9,26 +9,52 @@ policy — with no manual intervention required.
 This project is not "train a model and deploy it." It's the infrastructure
 layer that decides, safely and automatically, whether a new model version
 is trustworthy enough to serve more traffic.
-
 ## Architecture
-Client
-│
-▼
-API Gateway (Go, gRPC/REST)
-│
-▼
-Traffic Router (weighted canary split, e.g. 95/5)
-│
-├──▶ Model v1 — stable
-└──▶ Model v2 — canary
-│
-▼
-Monitoring & Eval (latency, accuracy, drift)
-│
-▼
-Model Registry (MLflow)
-│
-└──▶ drives automatic promote / rollback of canary traffic
+
+```text
+                           +------------------+
+                           |      Client      |
+                           +--------+---------+
+                                    |
+                                    v
+                     +-------------------------------+
+                     | API Gateway (Go, REST/gRPC)   |
+                     +---------------+---------------+
+                                     |
+                                     v
+                     +-------------------------------+
+                     | Traffic Router (Weighted Split)|
+                     |         95% / 5%              |
+                     +---------------+---------------+
+                                     |
+                 +-------------------+-------------------+
+                 |                                       |
+                 v                                       v
+      +-----------------------+              +-----------------------+
+      | Model Server v1       |              | Model Server v2       |
+      | Stable                |              | Canary                |
+      +-----------+-----------+              +-----------+-----------+
+                  |                                      |
+                  +-------------------+------------------+
+                                      |
+                                      v
+                  +--------------------------------------+
+                  | Monitoring & Evaluation Engine       |
+                  | • Latency                            |
+                  | • Error Rate                         |
+                  | • Prediction Drift (PSI)             |
+                  +------------------+-------------------+
+                                     |
+                                     v
+                       +-------------------------------+
+                       | Model Registry (MLflow)       |
+                       +---------------+---------------+
+                                       |
+                        Promote / Rollback Decision
+                                       |
+                                       v
+                     Updates Traffic Split Automatically
+```
 
 ## Why this design
 
