@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     promote_psi_threshold: float = 0.1
     rollback_psi_threshold: float = 0.25
     log_level: str = "INFO"
+    max_latency_ratio: float = 1.5
+    max_error_rate: float = 0.05
+    canary_step_percent: int = 10
+    eval_stub_scenario: str = "healthy"  # healthy | degraded
+    decision_log_path: str = "./decisions.jsonl"
 
 
 @lru_cache
