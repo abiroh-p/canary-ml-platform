@@ -1,44 +1,29 @@
+// Package control implements the gateway's control plane: the current
+// canary traffic split (in memory) and the admin API to change it.
 package control
 
-import (
-	"encoding/json"
-	"errors"
-	"log/slog"
-	"net/http"
-)
+import "sync/atomic"
 
-var ErrInvalidWeight = errors.New("canary weight must be between 0 and 100")
-
-type splitRequest struct {
-	CanaryWeight int32 `json:"canary_weight"`
+// SplitState holds the current canary traffic percentage (0-100),
+// safe for concurrent reads (data plane) and rare writes (control plane).
+type SplitState struct {
+	canaryWeight atomic.Int32
 }
 
-// AdminHandler returns an http.Handler for the admin API, calling back
-// into the given SplitState. Kept separate from SplitState itself so
-// the state type has no HTTP dependency — testable without a server.
-func AdminHandler(state *SplitState) http.Handler {
-	mux := http.NewServeMux()
+func NewSplitState() *SplitState {
+	s := &SplitState{}
+	s.canaryWeight.Store(0)
+	return s
+}
 
-	mux.HandleFunc("POST /admin/traffic-split", func(w http.ResponseWriter, r *http.Request) {
-		var req splitRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "invalid request body", http.StatusBadRequest)
-			return
-		}
+func (s *SplitState) CanaryWeight() int32 {
+	return s.canaryWeight.Load()
+}
 
-		if err := state.SetCanaryWeight(req.CanaryWeight); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		slog.Info("traffic split updated", "canary_weight", req.CanaryWeight)
-		w.WriteHeader(http.StatusOK)
-	})
-
-	mux.HandleFunc("GET /admin/traffic-split", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(splitRequest{CanaryWeight: state.CanaryWeight()})
-	})
-
-	return mux
+func (s *SplitState) SetCanaryWeight(weight int32) error {
+	if weight < 0 || weight > 100 {
+		return ErrInvalidWeight
+	}
+	s.canaryWeight.Store(weight)
+	return nil
 }
