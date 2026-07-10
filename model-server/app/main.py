@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from app.api.deps import get_inference_service
 from app.api.routes import health, predict
 from app.core.config import get_settings
+from prometheus_client import make_asgi_app
 from app.core.logging import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -32,3 +33,4 @@ app = FastAPI(title="model-server", lifespan=lifespan)
 
 app.include_router(health.router)
 app.include_router(predict.router)
+app.mount("/metrics", make_asgi_app())

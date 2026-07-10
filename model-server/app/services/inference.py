@@ -8,6 +8,8 @@ import time
 
 from app.models.loader import ModelLoader
 from app.schemas.prediction import PredictionRequest, PredictionResponse
+from app.core.metrics import PREDICTION_LATENCY, PREDICTION_REQUESTS_TOTAL
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,17 +21,29 @@ class InferenceService:
         self._model = loader.load()
         self._model_version_label = model_version_label
 
+    # inside InferenceService.predict, replace the body with:
     def predict(self, request: PredictionRequest) -> PredictionResponse:
         start = time.perf_counter()
-        raw_prediction = self._model.predict([request.features])[0]
+        try:
+            raw_prediction = self._model.predict([request.features])[0]
+            status = "success"
+        except Exception:
+            status = "error"
+            PREDICTION_REQUESTS_TOTAL.labels(
+                model_version_label=self._model_version_label, status=status
+            ).inc()
+            raise
+
         latency_ms = (time.perf_counter() - start) * 1000
+
+        PREDICTION_LATENCY.labels(model_version_label=self._model_version_label).observe(latency_ms)
+        PREDICTION_REQUESTS_TOTAL.labels(
+            model_version_label=self._model_version_label, status=status
+        ).inc()
 
         logger.info(
             "prediction served",
-            extra={
-                "model_version_label": self._model_version_label,
-                "latency_ms": round(latency_ms, 3),
-            },
+            extra={"model_version_label": self._model_version_label, "latency_ms": round(latency_ms, 3)},
         )
 
         return PredictionResponse(
@@ -37,3 +51,5 @@ class InferenceService:
             model_version_label=self._model_version_label,
             latency_ms=latency_ms,
         )
+
+

@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings>=2.2",
     "scikit-learn>=1.5",
     "joblib>=1.4",
+    "prometheus-client>=0.20",
 ]
 
 [project.optional-dependencies]
@@ -32,3 +33,4 @@ testpaths = ["tests"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]
+
