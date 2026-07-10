@@ -35,3 +35,4 @@ Thumbs.db
 # --- Editors ---
 .vscode/
 .idea/
+model-server/artifacts/
