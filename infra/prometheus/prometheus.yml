@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: model-server-stable
+    static_configs:
+      - targets: ["host.docker.internal:8001"]
+        labels:
+          model_version_label: stable
+
+  - job_name: model-server-canary
+    static_configs:
+      - targets: ["host.docker.internal:8002"]
+        labels:
+          model_version_label: canary
+
+  - job_name: gateway
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
