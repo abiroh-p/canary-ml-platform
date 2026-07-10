@@ -10,6 +10,7 @@ import (
 	"github.com/abiroh-p/canary-ml-platform/gateway/internal/control"
 	"github.com/abiroh-p/canary-ml-platform/gateway/internal/logging"
 	"github.com/abiroh-p/canary-ml-platform/gateway/internal/router"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -32,9 +33,13 @@ func main() {
 	errCh := make(chan error, 2)
 
 	go func() {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		mux.Handle("/", rt)
+
 		addr := ":" + strconv.Itoa(cfg.Port)
 		slog.Info("data plane listening", "addr", addr)
-		errCh <- http.ListenAndServe(addr, rt)
+		errCh <- http.ListenAndServe(addr, mux)
 	}()
 
 	go func() {

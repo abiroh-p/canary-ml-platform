@@ -52,9 +52,13 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	proxy.ServeHTTP(w, r)
 
+	latencyMs := float64(time.Since(start).Milliseconds())
+	RequestsTotal.WithLabelValues(target).Inc()
+	RequestLatency.WithLabelValues(target).Observe(latencyMs)
+
 	slog.Info("request routed",
 		"target", target,
 		"canary_weight", weight,
-		"latency_ms", time.Since(start).Milliseconds(),
+		"latency_ms", latencyMs,
 	)
 }
