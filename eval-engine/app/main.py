@@ -5,6 +5,7 @@ import time
 
 from app.clients.gateway_client import GatewayClient
 from app.clients.metrics_client import ModelMetrics, StubMetricsClient
+from app.clients.prometheus_client import PrometheusMetricsClient
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.models.decision import log_decision
@@ -14,23 +15,17 @@ logger = logging.getLogger(__name__)
 
 
 def build_evaluator(settings) -> Evaluator:
-    # TODO: replace StubMetricsClient with a real PrometheusMetricsClient
-    # once monitoring/ is built.
-    if settings.eval_stub_scenario == "degraded":
-        canary_metrics = ModelMetrics(
-            p99_latency_ms=55.0,
-            error_rate=0.15,  # exceeds max_error_rate (0.05) -> forces rollback
-            prediction_scores=[0.12] * 100,
-        )
+    if settings.use_real_metrics:
+        metrics_client = PrometheusMetricsClient(settings.prometheus_url)
     else:
         canary_metrics = ModelMetrics(p99_latency_ms=55.0, error_rate=0.01, prediction_scores=[0.12] * 100)
+        metrics_client = StubMetricsClient({
+            "stable": ModelMetrics(p99_latency_ms=50.0, error_rate=0.01, prediction_scores=[0.1] * 100),
+            "canary": canary_metrics,
+        })
 
-    stub = StubMetricsClient({
-        "stable": ModelMetrics(p99_latency_ms=50.0, error_rate=0.01, prediction_scores=[0.1] * 100),
-        "canary": canary_metrics,
-    })
     return Evaluator(
-        metrics_client=stub,
+        metrics_client=metrics_client,
         promote_psi_threshold=settings.promote_psi_threshold,
         rollback_psi_threshold=settings.rollback_psi_threshold,
         max_latency_ratio=settings.max_latency_ratio,

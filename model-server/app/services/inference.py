@@ -9,6 +9,7 @@ import time
 from app.models.loader import ModelLoader
 from app.schemas.prediction import PredictionRequest, PredictionResponse
 from app.core.metrics import PREDICTION_LATENCY, PREDICTION_REQUESTS_TOTAL
+from app.services.prediction_logger import PredictionLogger
 
 
 logger = logging.getLogger(__name__)
@@ -20,9 +21,11 @@ class InferenceService:
     def __init__(self, loader: ModelLoader, model_version_label: str) -> None:
         self._model = loader.load()
         self._model_version_label = model_version_label
+        self._prediction_logger = prediction_logger
+
 
     # inside InferenceService.predict, replace the body with:
-    def predict(self, request: PredictionRequest) -> PredictionResponse:
+def predict(self, request: PredictionRequest) -> PredictionResponse:
         start = time.perf_counter()
         try:
             raw_prediction = self._model.predict([request.features])[0]
@@ -35,6 +38,8 @@ class InferenceService:
             raise
 
         latency_ms = (time.perf_counter() - start) * 1000
+
+        self._prediction_logger.log(float(raw_prediction))
 
         PREDICTION_LATENCY.labels(model_version_label=self._model_version_label).observe(latency_ms)
         PREDICTION_REQUESTS_TOTAL.labels(
