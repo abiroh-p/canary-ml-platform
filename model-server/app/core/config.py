@@ -45,7 +45,6 @@ class Settings(BaseSettings):
 
     prediction_log_path: str = "./logs/predictions.jsonl"
 
-
 @lru_cache
 def get_settings() -> Settings:
     """

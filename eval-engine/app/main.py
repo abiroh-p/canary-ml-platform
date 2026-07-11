@@ -16,7 +16,11 @@ logger = logging.getLogger(__name__)
 
 def build_evaluator(settings) -> Evaluator:
     if settings.use_real_metrics:
-        metrics_client = PrometheusMetricsClient(settings.prometheus_url)
+        metrics_client = PrometheusMetricsClient(
+            prometheus_url=settings.prometheus_url,
+            stable_log_path=settings.stable_prediction_log_path,
+            canary_log_path=settings.canary_prediction_log_path,
+        )
     else:
         canary_metrics = ModelMetrics(p99_latency_ms=55.0, error_rate=0.01, prediction_scores=[0.12] * 100)
         metrics_client = StubMetricsClient({
