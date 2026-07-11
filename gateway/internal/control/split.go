@@ -13,6 +13,7 @@ type SplitState struct {
 func NewSplitState() *SplitState {
 	s := &SplitState{}
 	s.canaryWeight.Store(0)
+	CanaryWeightGauge.Set(0)
 	return s
 }
 
@@ -25,5 +26,6 @@ func (s *SplitState) SetCanaryWeight(weight int32) error {
 		return ErrInvalidWeight
 	}
 	s.canaryWeight.Store(weight)
+	CanaryWeightGauge.Set(float64(weight))
 	return nil
 }
