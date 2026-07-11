@@ -6,11 +6,10 @@ so it's testable with plain Pytest and reusable outside HTTP if needed.
 import logging
 import time
 
+from app.core.metrics import PREDICTION_LATENCY, PREDICTION_REQUESTS_TOTAL
 from app.models.loader import ModelLoader
 from app.schemas.prediction import PredictionRequest, PredictionResponse
-from app.core.metrics import PREDICTION_LATENCY, PREDICTION_REQUESTS_TOTAL
 from app.services.prediction_logger import PredictionLogger
-
 
 logger = logging.getLogger(__name__)
 
@@ -18,14 +17,17 @@ logger = logging.getLogger(__name__)
 class InferenceService:
     """Wraps a loaded model and produces PredictionResponse objects."""
 
-    def __init__(self, loader: ModelLoader, model_version_label: str) -> None:
+    def __init__(
+        self,
+        loader: ModelLoader,
+        model_version_label: str,
+        prediction_logger: PredictionLogger,
+    ) -> None:
         self._model = loader.load()
         self._model_version_label = model_version_label
         self._prediction_logger = prediction_logger
 
-
-    # inside InferenceService.predict, replace the body with:
-def predict(self, request: PredictionRequest) -> PredictionResponse:
+    def predict(self, request: PredictionRequest) -> PredictionResponse:
         start = time.perf_counter()
         try:
             raw_prediction = self._model.predict([request.features])[0]
@@ -48,7 +50,10 @@ def predict(self, request: PredictionRequest) -> PredictionResponse:
 
         logger.info(
             "prediction served",
-            extra={"model_version_label": self._model_version_label, "latency_ms": round(latency_ms, 3)},
+            extra={
+                "model_version_label": self._model_version_label,
+                "latency_ms": round(latency_ms, 3),
+            },
         )
 
         return PredictionResponse(
@@ -56,5 +61,3 @@ def predict(self, request: PredictionRequest) -> PredictionResponse:
             model_version_label=self._model_version_label,
             latency_ms=latency_ms,
         )
-
-
