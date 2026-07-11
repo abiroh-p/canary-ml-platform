@@ -1,12 +1,63 @@
 services:
+  model-server-stable:
+    build: ../model-server
+    ports:
+      - "8001:8001"
+    volumes:
+      - ../model-server/artifacts:/app/artifacts:ro
+      - prediction-logs:/app/logs
+    environment:
+      - MODEL_VERSION_LABEL=stable
+      - PREDICTION_LOG_PATH=/app/logs/stable_predictions.jsonl
+
+  model-server-canary:
+    build: ../model-server
+    ports:
+      - "8002:8001"
+    volumes:
+      - ../model-server/artifacts:/app/artifacts:ro
+      - prediction-logs:/app/logs
+    environment:
+      - MODEL_VERSION_LABEL=canary
+      - PREDICTION_LOG_PATH=/app/logs/canary_predictions.jsonl
+
+  gateway:
+    build: ../gateway
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    environment:
+      - STABLE_UPSTREAM_URL=http://model-server-stable:8001
+      - CANARY_UPSTREAM_URL=http://model-server-canary:8001
+    depends_on:
+      - model-server-stable
+      - model-server-canary
+
+  eval-engine:
+    build: ../eval-engine
+    volumes:
+      - prediction-logs:/app/logs:ro
+      - eval-data:/app/data
+    environment:
+      - USE_REAL_METRICS=true
+      - GATEWAY_ADMIN_URL=http://gateway:8081
+      - PROMETHEUS_URL=http://prometheus:9090
+      - STABLE_PREDICTION_LOG_PATH=/app/logs/stable_predictions.jsonl
+      - CANARY_PREDICTION_LOG_PATH=/app/logs/canary_predictions.jsonl
+    depends_on:
+      - gateway
+      - prometheus
+
   prometheus:
     image: prom/prometheus:latest
     ports:
       - "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      - model-server-stable
+      - model-server-canary
+      - gateway
 
   grafana:
     image: grafana/grafana:latest
@@ -21,3 +72,7 @@ services:
       - ./grafana/dashboards:/etc/grafana/dashboards:ro
     depends_on:
       - prometheus
+
+volumes:
+  prediction-logs:
+  eval-data:
