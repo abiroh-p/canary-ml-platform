@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-server-stable
+  namespace: canary-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: model-server-stable
+  template:
+    metadata:
+      labels:
+        app: model-server-stable
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: model-server
+          image: canarymlplatformacr32255.azurecr.io/model-server:v2
+          ports:
+            - containerPort: 8001
+          env:
+            - name: MODEL_VERSION_LABEL
+              value: "stable"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-server-stable
+  namespace: canary-platform
+spec:
+  type: ClusterIP
+  selector:
+    app: model-server-stable
+  ports:
+    - port: 8001
+      targetPort: 8001

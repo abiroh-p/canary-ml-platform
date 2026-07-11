@@ -14,6 +14,12 @@ WORKDIR /app
 COPY --from=builder /build/deps /usr/local/lib/python3.12/site-packages
 COPY app/ ./app/
 
+# TEMPORARY: baking the model artifact into the image for this K8s
+# milestone, since no volume/MLflow-based loading exists yet to supply
+# it at runtime (see ADR-0003 — this contradicts that decision and
+# should be replaced by MLflow registry loading once built).
+COPY artifacts/ ./artifacts/
+
 RUN mkdir -p /app/artifacts /app/logs && chown -R appuser:appuser /app
 
 USER appuser
