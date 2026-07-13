@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     decision_log_path: str = "./decisions.jsonl"
     prometheus_url: str = "http://localhost:9090"
     use_real_metrics: bool = False
-    stable_prediction_log_path: str = "../model-server/logs/stable_predictions.jsonl"
-    canary_prediction_log_path: str = "../model-server/logs/canary_predictions.jsonl"
+    stable_model_server_url: str = "http://model-server-stable:8001"
+    canary_model_server_url: str = "http://model-server-canary:8001"
     
 
 

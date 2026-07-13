@@ -48,6 +48,23 @@ class Evaluator:
         stable = self._metrics_client.get_metrics("stable")
         canary = self._metrics_client.get_metrics("canary")
 
+        if not stable.prediction_scores or not canary.prediction_scores:
+            logger.warning(
+                "insufficient prediction data for PSI, holding",
+                extra={
+                    "stable_count": len(stable.prediction_scores),
+                    "canary_count": len(canary.prediction_scores),
+                },
+            )
+            return EvaluationResult(
+                decision=Decision.HOLD,
+                psi=0.0,
+                stable_p99_latency_ms=stable.p99_latency_ms,
+                canary_p99_latency_ms=canary.p99_latency_ms,
+                canary_error_rate=canary.error_rate,
+                reason="insufficient prediction data for PSI",
+            )
+
         psi = calculate_psi(stable.prediction_scores, canary.prediction_scores)
         latency_ratio = canary.p99_latency_ms / max(stable.p99_latency_ms, 1e-6)
 

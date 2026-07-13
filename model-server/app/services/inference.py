@@ -26,6 +26,7 @@ class InferenceService:
         self._model = loader.load()
         self._model_version_label = model_version_label
         self._prediction_logger = prediction_logger
+        self.prediction_logger = prediction_logger
 
     def predict(self, request: PredictionRequest) -> PredictionResponse:
         start = time.perf_counter()

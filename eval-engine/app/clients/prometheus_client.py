@@ -1,11 +1,13 @@
 """
 Real metrics client backed by Prometheus PromQL queries (latency, error
-rate) plus local JSONL prediction logs (prediction scores for PSI).
+rate) plus a network call to each model-server's /predictions/recent
+endpoint (prediction scores for PSI).
 
-NOTE: prediction_scores comes from the model-server's prediction log
-files, not Prometheus — histograms don't retain raw values needed for
-PSI. See ADR-0004 and Step 30 notes for the shared-filesystem
-assumption this currently relies on.
+NOTE: prediction_scores comes from a direct HTTP call to the model
+server's in-memory recent-predictions buffer, not from Prometheus
+(histograms don't retain raw values needed for PSI) and not from a
+shared filesystem (that assumption broke on multi-node K8s — see
+ADR-0004 and Step 41).
 """
 
 import logging
@@ -13,7 +15,6 @@ import logging
 import httpx
 
 from app.clients.metrics_client import MetricsClient, ModelMetrics
-from app.clients.prediction_log_reader import read_recent_scores
 
 logger = logging.getLogger(__name__)
 
@@ -22,13 +23,13 @@ class PrometheusMetricsClient(MetricsClient):
     def __init__(
         self,
         prometheus_url: str,
-        stable_log_path: str,
-        canary_log_path: str,
+        stable_url: str,
+        canary_url: str,
         window: str = "5m",
     ) -> None:
         self._base_url = prometheus_url.rstrip("/")
         self._window = window
-        self._log_paths = {"stable": stable_log_path, "canary": canary_log_path}
+        self._upstream_urls = {"stable": stable_url, "canary": canary_url}
 
     def _query(self, promql: str) -> float | None:
         resp = httpx.get(f"{self._base_url}/api/v1/query", params={"query": promql})
@@ -60,8 +61,18 @@ class PrometheusMetricsClient(MetricsClient):
         if error_rate is None:
             error_rate = 0.0
 
-        log_path = self._log_paths.get(model_version_label)
-        prediction_scores = read_recent_scores(log_path) if log_path else []
+        upstream_url = self._upstream_urls.get(model_version_label)
+        prediction_scores: list[float] = []
+        if upstream_url:
+            try:
+                resp = httpx.get(f"{upstream_url}/predictions/recent")
+                resp.raise_for_status()
+                prediction_scores = resp.json()["prediction_scores"]
+            except httpx.HTTPError as e:
+                logger.warning(
+                    "failed to fetch recent predictions",
+                    extra={"model_version_label": model_version_label, "error": str(e)},
+                )
 
         if not prediction_scores:
             logger.warning(

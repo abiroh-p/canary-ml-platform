@@ -18,8 +18,8 @@ def build_evaluator(settings) -> Evaluator:
     if settings.use_real_metrics:
         metrics_client = PrometheusMetricsClient(
             prometheus_url=settings.prometheus_url,
-            stable_log_path=settings.stable_prediction_log_path,
-            canary_log_path=settings.canary_prediction_log_path,
+            stable_url=settings.stable_model_server_url,
+            canary_url=settings.canary_model_server_url,
         )
     else:
         canary_metrics = ModelMetrics(p99_latency_ms=55.0, error_rate=0.01, prediction_scores=[0.12] * 100)
