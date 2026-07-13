@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eval-engine
+  namespace: canary-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: eval-engine
+  template:
+    metadata:
+      labels:
+        app: eval-engine
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: eval-engine
+          image: canarymlplatformacr32255.azurecr.io/eval-engine:v3
+          env:
+            - name: USE_REAL_METRICS
+              value: "true"
+            - name: GATEWAY_ADMIN_URL
+              value: "http://gw-admin:8081"
+            - name: PROMETHEUS_URL
+              value: "http://prometheus:9090"
+            - name: STABLE_MODEL_SERVER_URL
+              value: "http://model-server-stable:8001"
+            - name: CANARY_MODEL_SERVER_URL
+              value: "http://model-server-canary:8001"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"

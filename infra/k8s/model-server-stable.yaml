@@ -16,7 +16,7 @@ spec:
       enableServiceLinks: false
       containers:
         - name: model-server
-          image: canarymlplatformacr32255.azurecr.io/model-server:v2
+          image: canarymlplatformacr32255.azurecr.io/model-server:v3
           ports:
             - containerPort: 8001
           env:

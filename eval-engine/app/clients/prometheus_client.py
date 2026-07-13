@@ -32,13 +32,18 @@ class PrometheusMetricsClient(MetricsClient):
         self._upstream_urls = {"stable": stable_url, "canary": canary_url}
 
     def _query(self, promql: str) -> float | None:
-        resp = httpx.get(f"{self._base_url}/api/v1/query", params={"query": promql})
-        resp.raise_for_status()
+        try:
+            resp = httpx.get(f"{self._base_url}/api/v1/query", params={"query": promql})
+            resp.raise_for_status()
+        except httpx.HTTPError as e:
+            logger.warning("prometheus query failed", extra={"error": str(e)})
+            return None
+
         result = resp.json()["data"]["result"]
         if not result:
             return None
         value = float(result[0]["value"][1])
-        if value != value:  # NaN check (NaN != NaN is always True)
+        if value != value:  # NaN check
             return None
         return value
 
